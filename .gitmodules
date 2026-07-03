@@ -1,0 +1,3 @@
+[submodule "dreamer4"]
+	path = dreamer4
+	url = https://github.com/nicklashansen/dreamer4
