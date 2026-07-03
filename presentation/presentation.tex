@@ -1,0 +1,165 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{beaver}
+
+% Packages
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{minted} % For code highlighting
+
+\title[DreamerV4]{Training Agents Inside of Scalable World Models}
+\subtitle{Paper Presentation and Code Analysis}
+\author{Marco \and Partner}
+\institute{Reinforcement Learning Course}
+\date{\today}
+
+\begin{document}
+
+% Title Slide
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Table of Contents
+\begin{frame}{Outline}
+    \tableofcontents
+\end{frame}
+
+%---------------------------------------------------------
+\section{Methodology}
+%---------------------------------------------------------
+
+\begin{frame}{Introduction to World Models}
+    \begin{itemize}
+        \item \textbf{The Problem:} Traditional Model-Free RL (e.g., PPO, SAC) requires millions of interactions with the real environment.
+        \item \textbf{The Solution:} World Models learn a compressed simulator of the environment. The agent can then train entirely in "imagination."
+        \item \textbf{Benefits:}
+        \begin{itemize}
+            \item High sample efficiency.
+            \item Safe exploration (the agent fails in its imagination, not in reality).
+            \item Learning from offline data.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{DreamerV4 Architecture}
+    \begin{itemize}
+        \item Unlike previous versions (DreamerV1-V3) which used Recurrent State Space Models (RSSM), \textbf{DreamerV4} uses a highly scalable \textbf{Block-Causal Transformer}.
+        \item \textbf{Key Components:}
+        \begin{itemize}
+            \item \textbf{Tokenizer (Encoder \& Decoder):} Uses Masked Autoencoders (MAE) to compress image patches into robust discrete latents.
+            \item \textbf{Dynamics Model:} A causal transformer that predicts the next latent state given past states and actions.
+            \item \textbf{Actor-Critic:} The agent policy that learns from the Dynamics Model's imagined rollouts.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Shortcut Forcing Objective}
+    \begin{itemize}
+        \item A major innovation in DreamerV4 is \textbf{Shortcut Forcing}.
+        \item Instead of predicting $t+1, t+2, t+3$ strictly sequentially, the model learns to directly denoise the state at step $t+k$.
+        \item This allows the model to "jump" into the future during imagination, dramatically speeding up the generation of long-horizon behaviors.
+    \end{itemize}
+\end{frame}
+
+%---------------------------------------------------------
+\section{Code Analysis (PyTorch Implementation)}
+%---------------------------------------------------------
+
+\begin{frame}{The Unofficial PyTorch Implementation}
+    \begin{itemize}
+        \item The authors originally implemented DreamerV4 in JAX. We are analyzing an unofficial PyTorch reproduction applied to continuous control tasks (DMControl).
+        \item \textbf{Repository Structure:}
+        \begin{itemize}
+            \item \texttt{model.py}: Contains the core neural networks (Encoder, Decoder, Dynamics).
+            \item \texttt{interactive.py}: A web server for live human interaction with the trained world model.
+            \item \texttt{train\_dynamics.py} / \texttt{train\_tokenizer.py}: Training scripts.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Code Deep-Dive: The Encoder}
+    The Tokenizer compresses raw pixels into a bottleneck representation using a Block-Causal Transformer.
+    \begin{minted}[fontsize=\footnotesize, bgcolor=lightgray]{python}
+class Encoder(nn.Module):
+    def __init__(self, patch_dim, d_model, n_latents, ...):
+        # 1. Linear projection of image patches
+        self.patch_proj = nn.Linear(patch_dim, d_model)
+        
+        # 2. Block-Causal Transformer for spatial/temporal mixing
+        self.transformer = BlockCausalTransformer(...)
+        
+        # 3. Tanh bottleneck to bind latents in [-1, 1]
+        self.bottleneck_proj = nn.Linear(d_model, d_bottleneck)
+        
+    def forward(self, patch_tokens):
+        # Applies Masked Auto-Encoding (MAE) randomly
+        proj_masked, mae_mask, keep_prob = self.mae(proj)
+        enc = self.transformer(tokens)
+        z = torch.tanh(self.bottleneck_proj(enc[:, :, :self.n_latents, :]))
+        return z
+    \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Code Deep-Dive: The Dynamics Model}
+    The Dynamics Model predicts future latent states $z_{t+1}$ conditioned on continuous actions.
+    \begin{minted}[fontsize=\footnotesize, bgcolor=lightgray]{python}
+class Dynamics(nn.Module):
+    def forward(self, actions, step_idxs, signal_idxs, packed_enc_tokens):
+        # Embed current spatial state
+        spatial_tokens = self.spatial_proj(packed_enc_tokens)
+        
+        # Embed continuous actions
+        action_tokens = self.action_encoder(actions)
+        
+        # Concatenate tokens and apply Transformer
+        tokens = torch.cat([action_tokens, spatial_tokens, ...], dim=2)
+        x = self.transformer(tokens)
+        
+        # Output predicted next spatial state
+        spatial_out = x[:, :, self.spatial_slice, :]
+        x1_hat = self.flow_x_head(spatial_out)
+        return x1_hat
+    \end{minted}
+\end{frame}
+
+%---------------------------------------------------------
+\section{Live Demonstration}
+%---------------------------------------------------------
+
+\begin{frame}{Jupyter Notebook Walkthrough}
+    \begin{center}
+        \Large \textbf{Live Demonstration}
+        
+        \vspace{0.5cm}
+        \normalsize
+        Switching to \texttt{dreamer4\_tutorial.ipynb} to see the code in action with dummy continuous-control data.
+    \end{center}
+\end{frame}
+
+\begin{frame}{Interactive Web UI}
+    \begin{itemize}
+        \item The repository provides an \texttt{interactive.py} script.
+        \item It loads the pre-trained Checkpoints and runs the \texttt{Dynamics} model in real-time.
+        \item Users can input actions via keyboard, and the Decoder will render the "imagined" frame live in the browser.
+    \end{itemize}
+\end{frame}
+
+%---------------------------------------------------------
+\section{Conclusion}
+%---------------------------------------------------------
+
+\begin{frame}{Conclusion}
+    \begin{itemize}
+        \item \textbf{Scalability:} DreamerV4 proves that Transformer-based world models scale beautifully and efficiently.
+        \item \textbf{Offline Learning:} Capable of learning purely from offline datasets without risky environment interactions.
+        \item \textbf{Implementation Feasibility:} While full training requires significant compute (8x A100s for days), running inference and fine-tuning on continuous control benchmarks is highly accessible.
+    \end{itemize}
+    \vspace{0.5cm}
+    \begin{center}
+        \textbf{Thank you!}
+    \end{center}
+\end{frame}
+
+\end{document}
