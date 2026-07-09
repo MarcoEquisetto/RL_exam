@@ -1,0 +1,13 @@
+I need to update the "Real-World Engineering Challenges" slide in my presentation to reflect a much better, more sophisticated methodology we implemented. Please update the speaker notes and bullet points based on the following:
+
+The Problem: We wanted to run the interactive.py web demo, which requires an initial frame to seed the World Model's imagination. The repository's documentation tells you to download a 350GB preprocessed image dataset to get this starting frame. We investigated the smaller 30GB dataset hosted on Hugging Face, but discovered it only contained low-dimensional state vectors (joint angles, velocities), not the actual pixel images required by the architecture.
+
+Our Elegant Solution (The New Methodology): Instead of downloading 350GB of data or using a "dummy black screen" hack, we wrote a custom Python script that hooks directly into the DeepMind Control Suite (dm_control).
+
+We instantiated the finger-turn-hard physics environment programmatically.
+We commanded the physics engine to render a single, perfect 128x128 RGB frame of the starting state.
+We resolved a PyTorch memory contiguity issue (negative array strides from the renderer) and packed the image into a Tensor.
+We saved this dynamically generated frame into the exact directory structure and .pt shard format that the interactive.py script natively expects.
+The Result: The interactive web server now boots flawlessly. It natively loads our dynamically generated starting frame, encodes it into the latent space, and the pre-trained World Model seamlessly hallucinates all subsequent future frames based on real-time user inputs—giving us a perfect live demo while entirely bypassing the massive 350GB dataset dependency!
+
+Please update the relevant slide and speaker notes to highlight this programmatic solution, as it demonstrates deep understanding of both the environment simulator and the model architecture!
