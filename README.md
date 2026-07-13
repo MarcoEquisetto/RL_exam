@@ -27,11 +27,7 @@ To properly run the interactive demo without experiencing blank-frame hallucinat
 2. **Launch the Server:**
    Start the interactive web demo by pointing it to the generated shards and the pre-trained checkpoints.
    ```bash
-   python interactive.py \
-       --tokenizer_ckpt ../logs/tokenizer_ckpts/tokenizer.pt \
-       --dynamics_ckpt ../logs/dynamics_ckpts/dynamics.pt \
-       --data_dir frames128 \
-       --frames_dir frames128
+      python interactive.py --tokenizer_ckpt ../logs/tokenizer_ckpts/tokenizer.pt --dynamics_ckpt ../logs/dynamics_ckpts/dynamics.pt --data_dir frames128 --frames_dir frames128
    ```
 
 3. **Open the Demo:**
