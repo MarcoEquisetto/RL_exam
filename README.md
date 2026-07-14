@@ -24,11 +24,17 @@ To properly run the interactive demo without experiencing blank-frame hallucinat
    python generate_all_seed_shards.py
    ```
 
-2. **Launch the Server:**
+2. **Launch the Server: Desktop Only!**
    Start the interactive web demo by pointing it to the generated shards and the pre-trained checkpoints.
    ```bash
       python interactive.py --tokenizer_ckpt ../logs/tokenizer_ckpts/tokenizer.pt --dynamics_ckpt ../logs/dynamics_ckpts/dynamics.pt --data_dir frames128 --frames_dir frames128
    ```
 
-3. **Open the Demo:**
+3. **Launch the Server: Laptop Only!**
+   Start the interactive web demo by pointing it to the generated shards and the pre-trained checkpoints.
+   ```bash
+      python interactive.py --tokenizer_ckpt ../logs/tokenizer_ckpts/tokenizer.pt --dynamics_ckpt ../logs/dynamics_ckpts/dynamics.pt --data_dir frames128 --frames_dir frames128 --amp --ctx_window 16
+   ```
+
+4. **Open the Demo:**
    Navigate to the URL provided in the terminal to access the DreamerV4 interactive web interface.
